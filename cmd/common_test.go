@@ -1,71 +1,120 @@
 package cmd
 
 import (
+	"fmt"
 	"testing"
 
-	"gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
-type CommonTestSuite struct {
-}
-
-var _ = check.Suite(&CommonTestSuite{})
-
-func (s *CommonTestSuite) SetUpSuite(c *check.C) {
-
-}
-
-func (s *CommonTestSuite) TestParseClusterAndProjectID(c *check.C) {
-	testParse(c, "local:p-12345", "local", "p-12345", false)
-	testParse(c, "c-12345:p-12345", "c-12345", "p-12345", false)
-	testParse(c, "cocal:p-12345", "", "", true)
-	testParse(c, "c-123:p-123", "", "", true)
-	testParse(c, "", "", "", true)
-	testParse(c, "c-m-12345678:p-12345", "c-m-12345678", "p-12345", false)
-	testParse(c, "c-m-123:p-12345", "", "", true)
-}
-
-func (s *CommonTestSuite) TestConvertSnakeCaseKeysToCamelCase(c *check.C) {
-	cases := []struct {
-		input   map[string]interface{}
-		renamed map[string]interface{}
+func Test_parseClusterAndProjectID(t *testing.T) {
+	tt := []struct {
+		name            string
+		inputID         string
+		expectedCluster string
+		expectedProject string
+		expectedErr     string
 	}{
 		{
-			map[string]interface{}{"foo_bar": "hello"},
-			map[string]interface{}{"fooBar": "hello"},
+			name:            "simple parsing",
+			inputID:         "local:p-12345",
+			expectedCluster: "local",
+			expectedProject: "p-12345",
 		},
 		{
-			map[string]interface{}{"fooBar": "hello"},
-			map[string]interface{}{"fooBar": "hello"},
+			name:            "simple parsing with downstream cluster",
+			inputID:         "c-12345:p-12345",
+			expectedCluster: "c-12345",
+			expectedProject: "p-12345",
 		},
 		{
-			map[string]interface{}{"foobar": "hello", "some_key": "valueUnmodified", "bar-baz": "bar-baz"},
-			map[string]interface{}{"foobar": "hello", "someKey": "valueUnmodified", "bar-baz": "bar-baz"},
+			name:        "wrong cluster name returns an error",
+			inputID:     "cocal:p-12345",
+			expectedErr: "Unable to extract clusterid and projectid",
 		},
 		{
-			map[string]interface{}{"foo_bar": "hello", "backup_config": map[string]interface{}{"hello_world": true}, "config_id": 123},
-			map[string]interface{}{"fooBar": "hello", "backupConfig": map[string]interface{}{"helloWorld": true}, "configId": 123},
+			name:        "short cluster name returns an error",
+			inputID:     "c-123:p-123",
+			expectedErr: "Unable to extract clusterid and projectid",
+		},
+		{
+			name:        "empty ID returns an error",
+			inputID:     "",
+			expectedErr: "Unable to extract clusterid and projectid",
+		},
+		{
+			name:            "no-local valid cluster ID and project",
+			inputID:         "c-m-12345678:p-12345",
+			expectedCluster: "c-m-12345678",
+			expectedProject: "p-12345",
+		},
+		{
+			name:        "short cluster ID returns an error",
+			inputID:     "c-m-123:p-12345",
+			expectedErr: "Unable to extract clusterid and projectid",
 		},
 	}
 
-	for _, tc := range cases {
-		convertSnakeCaseKeysToCamelCase(tc.input)
-		c.Assert(tc.input, check.DeepEquals, tc.renamed)
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			cluster, project, err := parseClusterAndProjectID(tc.inputID)
+			fmt.Println(err)
+
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
+				assert.Empty(t, cluster)
+				assert.Empty(t, project)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedCluster, cluster)
+				assert.Equal(t, tc.expectedProject, project)
+			}
+		})
 	}
 }
 
-func testParse(c *check.C, testID, expectedCluster, expectedProject string, errorExpected bool) {
-	actualCluster, actualProject, actualErr := parseClusterAndProjectID(testID)
-	c.Assert(actualCluster, check.Equals, expectedCluster)
-	c.Assert(actualProject, check.Equals, expectedProject)
-	if errorExpected {
-		c.Assert(actualErr, check.NotNil)
-	} else {
-		c.Assert(actualErr, check.IsNil)
+func Test_convertSnakeCaseKeysToCamelCase(t *testing.T) {
+	tt := []struct {
+		name     string
+		input    map[string]interface{}
+		expected map[string]interface{}
+	}{
+		{
+			name:     "",
+			input:    map[string]interface{}{"foo_bar": "hello"},
+			expected: map[string]interface{}{"fooBar": "hello"},
+		},
+		{
+			name:     "",
+			input:    map[string]interface{}{"fooBar": "hello"},
+			expected: map[string]interface{}{"fooBar": "hello"},
+		},
+		{
+			name:     "",
+			input:    map[string]interface{}{"foobar": "hello", "some_key": "valueUnmodified", "bar-baz": "bar-baz"},
+			expected: map[string]interface{}{"foobar": "hello", "someKey": "valueUnmodified", "bar-baz": "bar-baz"},
+		},
+		{
+			name: "",
+			input: map[string]interface{}{
+				"foo_bar":       "hello",
+				"backup_config": map[string]interface{}{"hello_world": true},
+				"config_id":     123,
+			},
+			expected: map[string]interface{}{
+				"fooBar":       "hello",
+				"backupConfig": map[string]interface{}{"helloWorld": true},
+				"configId":     123,
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			convertSnakeCaseKeysToCamelCase(tc.input)
+			assert.Equal(t, tc.expected, tc.input)
+		})
 	}
 }

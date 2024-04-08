@@ -3,62 +3,60 @@ package main
 import (
 	"testing"
 
-	"gopkg.in/check.v1"
+	"github.com/stretchr/testify/assert"
 )
 
-// Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) {
-	check.TestingT(t)
-}
-
-type MainTestSuite struct {
-}
-
-var _ = check.Suite(&MainTestSuite{})
-
-func (m *MainTestSuite) SetUpSuite(c *check.C) {
-}
-
-func (m *MainTestSuite) TestParseArgs(c *check.C) {
-	input := [][]string{
-		{"rancher", "run", "--debug", "-itd"},
-		{"rancher", "run", "--debug", "-itf=b"},
-		{"rancher", "run", "--debug", "-itd#"},
-		{"rancher", "run", "--debug", "-f=b"},
-		{"rancher", "run", "--debug", "-=b"},
-		{"rancher", "run", "--debug", "-"},
-	}
-	r0, err := parseArgs(input[0])
-	if err != nil {
-		c.Fatal(err)
-	}
-	c.Assert(r0, check.DeepEquals, []string{"rancher", "run", "--debug", "-i", "-t", "-d"})
-
-	r1, err := parseArgs(input[1])
-	if err != nil {
-		c.Fatal(err)
-	}
-	c.Assert(r1, check.DeepEquals, []string{"rancher", "run", "--debug", "-i", "-t", "-f=b"})
-
-	_, err = parseArgs(input[2])
-	if err == nil {
-		c.Fatal("should raise error")
-	}
-
-	r3, err := parseArgs(input[3])
-	if err != nil {
-		c.Fatal(err)
-	}
-	c.Assert(r3, check.DeepEquals, []string{"rancher", "run", "--debug", "-f=b"})
-
-	_, err = parseArgs(input[4])
-	if err == nil {
-		c.Fatal("should raise error")
+	tt := []struct {
+		name           string
+		input          []string
+		expectedOutput []string
+		expectedErr    string
+	}{
+		{
+			name:           "multiple simple flags",
+			input:          []string{"rancher", "run", "--debug", "-itd"},
+			expectedOutput: []string{"rancher", "run", "--debug", "-i", "-t", "-d"},
+		},
+		{
+			name:           "multiple flags with key value flag",
+			input:          []string{"rancher", "run", "--debug", "-itf=b"},
+			expectedOutput: []string{"rancher", "run", "--debug", "-i", "-t", "-f=b"},
+		},
+		{
+			name:        "invalid char in flags",
+			input:       []string{"rancher", "run", "--debug", "-itd#"},
+			expectedErr: "invalid input # in flag",
+		},
+		{
+			name:           "single key value flag",
+			input:          []string{"rancher", "run", "--debug", "-f=b"},
+			expectedOutput: []string{"rancher", "run", "--debug", "-f=b"},
+		},
+		{
+			name:        "key value flag with missing key",
+			input:       []string{"rancher", "run", "--debug", "-=b"},
+			expectedErr: "invalid input with '-' and '=' flag",
+		},
+		{
+			name:           "single dash arg-flag",
+			input:          []string{"rancher", "run", "--debug", "-"},
+			expectedOutput: []string{"rancher", "run", "--debug", "-"},
+		},
 	}
 
-	r5, err := parseArgs(input[5])
-	if err != nil {
-		c.Fatal(err)
+	for _, tc := range tt {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			parsedArgs, err := parseArgs(tc.input)
+
+			if tc.expectedErr != "" {
+				assert.ErrorContains(t, err, tc.expectedErr)
+				assert.Nil(t, parsedArgs)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedOutput, parsedArgs)
+			}
+		})
 	}
-	c.Assert(r5, check.DeepEquals, []string{"rancher", "run", "--debug", "-"})
 }
