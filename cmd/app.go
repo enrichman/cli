@@ -23,7 +23,7 @@ import (
 	projectClient "github.com/rancher/rancher/pkg/client/generated/project/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const (
