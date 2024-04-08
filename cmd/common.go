@@ -22,7 +22,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/docker/docker/pkg/namesgenerator"
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/rancher/cli/cliclient"
@@ -415,10 +414,6 @@ func Lookup(c *cliclient.MasterClient, name string, types ...string) (*ntypes.Re
 	}
 
 	return byName, nil
-}
-
-func RandomName() string {
-	return strings.Replace(namesgenerator.GetRandomName(0), "_", "-", -1)
 }
 
 // RandomLetters returns a string with random letters of length n
