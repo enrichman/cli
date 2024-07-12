@@ -72,5 +72,8 @@ jobs:
       with:
         path: dist/artifacts/${{ env.VERSION }}
         destination: ecandino-bucket/cli2/${{ env.VERSION }}
+        glob: '*.*'
+        parent: false
+        process_gcloudignore: false
         headers: |-
           cache-control: public,max-age=3600
