@@ -245,12 +245,12 @@ EOF
   EXISTING_PR=$(gh pr list --repo "$CLI_UPSTREAM_REPO" --head "$BUMP_BRANCH" --json number --jq '.[0].number' || true)
 
   if [ -n "$EXISTING_PR" ]; then
-    echo "  - Found existing PR #$EXISTING_PR. Updating title and body..."
-    gh pr edit "$EXISTING_PR" --repo "$CLI_UPSTREAM_REPO" --title "$PR_TITLE" --body "$PR_BODY"
+    echo "  - Found existing PR #$EXISTING_PR. Updating title, body, and assignee..."
+    gh pr edit "$EXISTING_PR" --repo "$CLI_UPSTREAM_REPO" --title "$PR_TITLE" --body "$PR_BODY" --add-assignee "@me"
     echo "🎉  Successfully updated existing Pull Request #$EXISTING_PR."
   else
     echo "  - Creating Pull Request against repository '$CLI_UPSTREAM_REPO'..."
-    gh pr create --repo "$CLI_UPSTREAM_REPO" --title "$PR_TITLE" --body "$PR_BODY" --base "$CLI_BRANCH" --fill
+    gh pr create --repo "$CLI_UPSTREAM_REPO" --title "$PR_TITLE" --body "$PR_BODY" --base "$CLI_BRANCH" --assignee "@me" --fill
     echo "🎉  Successfully created a new Pull Request to update dependencies to $LATEST_RANCHER_TAG."
   fi
 else
